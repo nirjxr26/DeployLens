@@ -22,7 +22,7 @@ jobs:
 
       - name: Install and Test
         run: |
-          npm ci
+          npm install
           npm test # Suppose this fails due to a GitHub incident...
 
       # 2. THE REPLAY STEP (Place this at the very end)
