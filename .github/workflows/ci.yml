@@ -1,7 +1,10 @@
 name: CI
 
 on:
-  pull_request: # This action ONLY works on Pull Requests
+  push:
+    branches: [ main ] # Or your default branch name
+  pull_request:
+  workflow_dispatch:   # Optional: keeps the manual run button too
 
 jobs:
   build-and-test:
