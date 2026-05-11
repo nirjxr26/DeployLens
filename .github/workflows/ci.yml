@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request: # This action ONLY works on Pull Requests
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    # 1. REQUIRED PERMISSIONS
+    permissions:
+      actions: write       # Needed to trigger the rerun
+      issues: write        # Needed to post PR comments
+      pull-requests: write # Needed to read PR details
+      contents: read       # Needed to checkout code
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install and Test
+        run: |
+          npm ci
+          npm test # Suppose this fails due to a GitHub incident...
+
+      # 2. THE REPLAY STEP (Place this at the very end)
+      - name: PR Build Replay
+        if: failure() # ONLY run this if a previous step failed
+        uses: nirjxr26/BlameLess@main # Replace with your username
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          max-retries: '1' # Prevents infinite loops if the code is actually broken
