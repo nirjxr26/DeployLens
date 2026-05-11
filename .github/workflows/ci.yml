@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ] # Or your default branch name
+    branches: [ main ]
   pull_request:
-  workflow_dispatch:   # Optional: keeps the manual run button too
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -12,23 +12,26 @@ jobs:
     
     # 1. REQUIRED PERMISSIONS
     permissions:
-      actions: write       # Needed to trigger the rerun
-      issues: write        # Needed to post PR comments
-      pull-requests: write # Needed to read PR details
-      contents: read       # Needed to checkout code
+      actions: write
+      issues: write
+      pull-requests: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install and Test
+        # We tell GitHub to run these inside the 'backend' folder
+        working-directory: ./backend 
         run: |
           npm install
-          npm test # Suppose this fails due to a GitHub incident...
+          npm test
 
-      # 2. THE REPLAY STEP (Place this at the very end)
+      # 2. THE REPLAY STEP
+      # This step stays the same, it doesn't need to be in the backend folder
       - name: PR Build Replay
-        if: failure() # ONLY run this if a previous step failed
-        uses: nirjxr26/BlameLess@main # Replace with your username
+        if: failure()
+        uses: nirjxr26/BlameLess@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          max-retries: '1' # Prevents infinite loops if the code is actually broken
+          max-retries: '1'
