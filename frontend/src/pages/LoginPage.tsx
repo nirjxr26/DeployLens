@@ -69,7 +69,7 @@ export default function LoginPage() {
     setTopError(null);
 
     try {
-      window.location.href = github.connectUrl();
+      globalThis.location.href = github.connectUrl();
     } catch (error) {
       setTopError(error instanceof Error ? error.message : "Unable to start GitHub sign-in");
     }

@@ -41,6 +41,17 @@ GitHub Actions and AWS CodeDeploy expose related deployment data in separate sys
 
 ## Installation / Setup
 
+### Docker
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+The stack starts PostgreSQL, runs Prisma migrations in the backend container, serves the API on `http://localhost:3004`, and serves the frontend on `http://localhost:4173`.
+
+### Local development
+
 ```bash
 git clone https://github.com/Nirjar26/deploylens.git
 cd deploylens
@@ -62,7 +73,7 @@ npm run dev
 ## Environment Variables
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/deploylens
+DATABASE_URL=postgresql://user:password@localhost:5433/deploylens
 
 JWT_SECRET=<64 hex chars>
 JWT_REFRESH_SECRET=<64 hex chars>
@@ -74,7 +85,7 @@ FRONTEND_URL=http://localhost:5173
 GITHUB_CLIENT_ID=<github-oauth-client-id>
 GITHUB_CLIENT_SECRET=<github-oauth-client-secret>
 GITHUB_WEBHOOK_SECRET=<random-string>
-GITHUB_REDIRECT_URI=http://localhost:3001/api/auth/github/callback
+GITHUB_REDIRECT_URI=http://localhost:3004/api/auth/github/callback
 
 AWS_ACCESS_KEY_ID=<aws-access-key-id>
 AWS_SECRET_ACCESS_KEY=<aws-secret-access-key>
