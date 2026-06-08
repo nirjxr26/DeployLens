@@ -3,7 +3,7 @@
   <p>CI/CD observability platform for unified deployment tracking across GitHub Actions and AWS CodeDeploy.</p>
 </div>
 
-## Problem Statement
+## Overview
 
 GitHub Actions and AWS CodeDeploy expose related deployment data in separate systems. Teams often have to manually map workflow runs to deployment executions and infer whether a specific commit reached production. DeployLens solves this by correlating both sources into one deployment timeline.
 
