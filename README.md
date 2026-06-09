@@ -1,158 +1,180 @@
 <div align="center">
-  <h1>DeployLens</h1>
-  <p>CI/CD observability platform for unified deployment tracking across GitHub Actions and AWS CodeDeploy.</p>
+
+<h1>DeployLens</h1>
+
 </div>
+CI/CD observability platform for unified deployment tracking across GitHub Actions and AWS CodeDeploy.
 
-## Problem Statement
+---
 
-GitHub Actions and AWS CodeDeploy expose related deployment data in separate systems. Teams often have to manually map workflow runs to deployment executions and infer whether a specific commit reached production. DeployLens solves this by correlating both sources into one deployment timeline.
+## Overview
+
+DeployLens is a full-stack deployment tracking and observability platform built for engineering teams that want to correlate GitHub Actions workflows and AWS CodeDeploy deployment executions into a single unified timeline. By connecting these disconnected data streams, teams can monitor delivery progress, identify pipeline friction, and verify exactly which commit reached production in real time.
+
+Core design rules:
+
+- Unified status is aggregated from both GHA and AWS CodeDeploy states.
+- Commits (SHAs) act as the single source of correlation across environments.
+- Deployment state transitions are streamed in real time to connected dashboards.
+- Encryption at rest is mandatory for all linked cloud credentials.
+- Rollbacks are treated as first-class, auditable deployment events.
+
+---
 
 ## Features
 
-- **Correlation:** Joins GitHub workflow runs and CodeDeploy deployments by commit SHA.
-- **Unified status:** Tracks `pending`, `running`, `success`, `failed`, and `rolled_back`.
-- **Realtime updates:** Streams deployment changes to the dashboard through Socket.io.
-- **Dashboard filters:** Supports repository, environment, status, branch, and date filters.
-- **Deployment detail:** Captures lifecycle events, durations, and rollback history.
-- **Security controls:** Uses JWT auth, CSRF protection, webhook signature validation, and encrypted credential storage.
+**Authentication & Sessions**
+- Secure JWT-based access and refresh tokens handled via secure cookies.
+- OAuth-based connection mapping with GitHub profiles.
+- Secure session lifecycle management with active session indicators.
 
-## Architecture / Flow
+**Correlation & Deployment Tracking**
+- Auto-joins GitHub workflow runs and AWS CodeDeploy deployments by commit SHA.
+- Unified status tracking across `pending`, `running`, `success`, `failed`, and `rolled_back`.
+- Detail views capturing granular lifecycle events, task durations, and rollback history.
 
-<p align="center">
-  <img src="./diagram/Architecture.png" alt="Architecture" width="420" />
-</p>
+**Dashboard & Analytics**
+- Real-time pipeline visualizer streaming updates via Socket.io.
+- Advanced filtering by repository, environment, status, branch, and date range.
+- Analytics dashboard presenting deployment frequencies, average lead times, and failure rates.
 
+**Security & Administration**
+- Robust CSRF protection on all mutating REST endpoints.
+- Webhook signature validation to verify incoming payloads from GitHub and AWS.
+- AES-256-GCM encryption for storing cloud provider connection credentials.
+
+---
 
 ## Tech Stack
 
-- **Frontend:** React, TypeScript, Vite, Zustand
-- **Backend:** Node.js, Express, TypeScript
-- **Database:** PostgreSQL, Prisma
-- **DevOps/Integrations:** GitHub Actions, AWS CodeDeploy, AWS SDK v3
-- **Realtime and Security:** Socket.io, JWT, CSRF, AES-256-GCM
+| Layer | Technologies |
+|---|---|
+| Frontend | React, TypeScript, Vite, Zustand |
+| Backend | Node.js, Express, TypeScript |
+| Database | PostgreSQL 16, Prisma |
+| Realtime | Socket.io |
+| Security | JWT, CSRF, AES-256-GCM |
+| Integrations | GitHub Actions API, AWS CodeDeploy, AWS SDK v3 |
 
-## How It Works
+---
 
-- **Step 1:** A commit triggers a GitHub Actions workflow.
-- **Step 2:** GitHub and AWS events are ingested through webhooks and pollers.
-- **Step 3:** Raw records are stored in PostgreSQL.
-- **Step 4:** The aggregator links records by commit SHA.
-- **Step 5:** DeployLens computes unified status and emits live updates to clients.
+## System Architecture Diagram
+<div align="center">
+<img
+  src="./diagram/system_architecture.png"
+  alt="Architecture"
+/>
+</div>
 
-## Installation / Setup
+---
 
-### Docker
+## Webhook & Event Ingestion Flow
 
-```bash
-cp .env.example .env
-docker compose up --build
-```
+**Ingestion** — Real-time event capture:
+- Receives GitHub Action event payloads and AWS deployment events via secure webhook endpoints (`/api/webhooks/github` and `/api/webhooks/aws`).
+- Validates payload signatures to guarantee source origin authenticity.
 
-The stack starts PostgreSQL, runs Prisma migrations in the backend container, serves the API on `http://localhost:3004`, and serves the frontend on `http://localhost:4173`.
+**Polling** — State synchronization:
+- Background poller jobs (`githubPoller` and `codedeployPoller`) query GitHub and AWS APIs dynamically.
+- Safeguards against missed webhook deliveries, ensuring absolute state consistency.
 
-### Local development
+**Aggregation**:
+- Combines step statuses, matches deployment runs via SHA, and resolves the final `UnifiedStatus`.
+- Broadcasts state changes to clients via Socket.io.
+
+---
+
+## Observability & Analytics
+
+DeployLens is designed to give complete visibility into your software delivery lifecycle:
+
+- **Deployment Metrics:** Tracks deployment success rates, deployment frequencies, and environments health.
+- **Audit Logging:** Logs user-initiated actions (integrations, rollbacks, configuration updates) with IP addresses and user agents.
+- **Lifecycle Event Timeline:** Captures internal execution durations, displaying which steps in your pipeline are bottlenecks.
+
+---
+
+## Security
+
+**Build-time:**
+- Strict TypeScript compilation rules to catch type errors during compilation.
+- Multi-stage Docker builds to minimize final image attack vectors.
+- Strict package dependency locks.
+
+**Runtime:**
+- CSRF validation on all mutating REST endpoints.
+- Secure cookie-based refresh tokens with token rotation logic.
+- Access tokens stored securely in memory.
+
+**Data Security:**
+- Encrypted storage of AWS credentials (Access Key ID, Secret Access Key) and GitHub access tokens using AES-256-GCM.
+
+---
+
+## Quick Start
+
+### Prerequisites
 
 ```bash
 git clone https://github.com/Nirjar26/deploylens.git
 cd deploylens
+cp .env.example .env
+```
 
+Edit `.env` with your values before starting.
+
+### Option 1 — Docker
+
+```bash
+docker-compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:4173 |
+| Backend API | http://localhost:3004 |
+| Database | localhost:5433 |
+
+### Option 2 — Local Development
+
+Requires Node.js 22+, PostgreSQL 16+.
+
+```bash
+# Backend Setup
 cd backend
 npm install
+npx prisma generate
+npm run dev        # runs on :3001 (exposes API on :3004 through Docker)
 
+# Frontend Setup
 cd ../frontend
 npm install
-
-# run backend and frontend in separate terminals
-cd ../backend
-npm run dev
-
-cd ../frontend
-npm run dev
+npm run dev        # runs on :5173
 ```
 
-## Environment Variables
+---
 
-```env
-DATABASE_URL=postgresql://user:password@localhost:5433/deploylens
+## Project Structure
 
-JWT_SECRET=<64 hex chars>
-JWT_REFRESH_SECRET=<64 hex chars>
-ENCRYPTION_KEY=<64 hex chars>
-PORT=3001
-
-FRONTEND_URL=http://localhost:5173
-
-GITHUB_CLIENT_ID=<github-oauth-client-id>
-GITHUB_CLIENT_SECRET=<github-oauth-client-secret>
-GITHUB_WEBHOOK_SECRET=<random-string>
-GITHUB_REDIRECT_URI=http://localhost:3004/api/auth/github/callback
-
-AWS_ACCESS_KEY_ID=<aws-access-key-id>
-AWS_SECRET_ACCESS_KEY=<aws-secret-access-key>
-AWS_REGION=<aws-region>
+```
+├── backend/          # Node.js Express API, Prisma schema, auth, aggregator, jobs
+├── frontend/         # React SPA app, Zustand store, Tailwind CSS styles
+├── diagram/          # Architecture visuals
+├── docker-compose.yml# Production deployment configuration
 ```
 
-## API Endpoints
+---
 
-| Method | Endpoint |
+## Documentation
+
+| Category | Links |
 |---|---|
-| POST | /api/auth/login |
-| POST | /api/auth/register |
-| POST | /api/auth/refresh |
-| GET | /api/deployments |
-| GET | /api/deployments/:id |
-| POST | /api/deployments/:id/rollback |
-| GET | /api/analytics |
-| POST | /api/webhooks/github |
-| POST | /api/webhooks/aws |
+| Setup | [Docker Setup](#option-1--docker) · [Local Development](#option-2--local-development) |
+| API Specification | [End-point Reference](#api-endpoints) |
+| Database Config | [Prisma Schema](backend/prisma/schema.prisma) |
 
-## Folder Structure
-
-```text
-deploylens/
-├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── migrations/
-│   ├── src/
-│   │   ├── jobs/
-│   │   ├── middleware/
-│   │   ├── modules/
-│   │   │   ├── auth/
-│   │   │   ├── account/
-│   │   │   ├── github/
-│   │   │   ├── aws/
-│   │   │   ├── deployments/
-│   │   │   ├── environments/
-│   │   │   ├── aggregator/
-│   │   │   ├── analytics/
-│   │   │   ├── audit/
-│   │   │   ├── webhooks/
-│   │   │   └── websocket/
-│   │   └── utils/
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── lib/
-│   │   ├── pages/
-│   │   ├── store/
-│   │   ├── styles/
-│   │   └── types/
-│   └── package.json
-├── diagram/
-│   └── Architecture.png
-└── README.md
-```
+---
 
 ## License
 
-MIT License
-
-## Author / Contact
-
-Nirjar Goswami  
-GitHub: https://github.com/nirjxr26
-
+MIT License — see [LICENSE](LICENSE)
